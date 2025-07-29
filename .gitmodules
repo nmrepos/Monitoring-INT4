@@ -1,0 +1,6 @@
+[submodule "k8s"]
+	path = k8s
+	url = https://github.com/rhildred/ansible-k8s
+[submodule "signoz"]
+	path = signoz
+	url = https://github.com/rhildred/docker-infra

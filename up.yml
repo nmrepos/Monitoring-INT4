@@ -1,0 +1,12 @@
+---
+- import_playbook: k8s/up.yml
+- name: bootstrap signoz
+  hosts: localhost
+  gather_facts: false
+  tasks:
+    - name: docker compose up
+      community.docker.docker_compose_v2:
+        project_src: signoz
+        files:
+        - docker-compose.yml
+        state: present
