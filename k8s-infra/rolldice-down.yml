@@ -1,0 +1,55 @@
+---
+- name: Remove rolldice application
+  hosts: localhost
+  gather_facts: false
+  vars:
+    namespace: "default"
+    
+  tasks:
+    - name: Remove rolldice deployment
+      kubernetes.core.k8s:
+        state: absent
+        api_version: apps/v1
+        kind: Deployment
+        name: rolldice-otel
+        namespace: "{{ namespace }}"
+        wait: true
+        wait_timeout: 120
+      ignore_errors: true
+      
+    - name: Remove rolldice service
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: Service
+        name: rolldice-otel-service
+        namespace: "{{ namespace }}"
+      ignore_errors: true
+      
+    - name: Remove rolldice ConfigMap
+      kubernetes.core.k8s:
+        state: absent
+        api_version: v1
+        kind: ConfigMap
+        name: rolldice-config
+        namespace: "{{ namespace }}"
+      ignore_errors: true
+      
+    - name: Remove load generator CronJob
+      kubernetes.core.k8s:
+        state: absent
+        api_version: batch/v1
+        kind: CronJob
+        name: rolldice-load-generator
+        namespace: "{{ namespace }}"
+      ignore_errors: true
+      
+    - name: Wait for resources to be removed
+      ansible.builtin.pause:
+        seconds: 10
+        
+    - name: Display removal status
+      ansible.builtin.debug:
+        msg: |
+          Rolldice application removal completed!
+          All rolldice-otel related resources have been removed from namespace: {{ namespace }}

@@ -10,3 +10,14 @@
         files:
         - docker-compose.yml
         state: present
+    
+    - name: Wait for SigNoz to be ready
+      ansible.builtin.wait_for:
+        port: 3301
+        host: localhost
+        delay: 30
+        timeout: 300
+      ignore_errors: true
+
+- import_playbook: k8s-infra/up.yml
+- import_playbook: k8s-infra/rolldice-up.yml

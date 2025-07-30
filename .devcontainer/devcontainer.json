@@ -1,5 +1,45 @@
 {
-    "containerEnv": {
-        "K8S": "k3d"
+  "name": "Monitoring Infrastructure",
+  "image": "mcr.microsoft.com/devcontainers/python:3.11",
+  "features": {
+    "ghcr.io/devcontainers/features/docker-in-docker:2": {},
+    "ghcr.io/devcontainers/features/kubectl-helm-minikube:1": {
+      "version": "latest",
+      "helm": "latest",
+      "kubectl": "latest"
     }
+  },
+  "postCreateCommand": "./setup.sh",
+  "forwardPorts": [3301, 8080, 4317, 4318],
+  "portsAttributes": {
+    "3301": {
+      "label": "SigNoz Dashboard",
+      "protocol": "http"
+    },
+    "8080": {
+      "label": "Rolldice App",
+      "protocol": "http"
+    },
+    "4317": {
+      "label": "OTLP gRPC",
+      "protocol": "http"
+    },
+    "4318": {
+      "label": "OTLP HTTP",
+      "protocol": "http"
+    }
+  },
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "ms-python.python",
+        "redhat.ansible",
+        "ms-kubernetes-tools.vscode-kubernetes-tools",
+        "ms-azuretools.vscode-docker"
+      ]
+    }
+  },
+  "containerEnv": {
+    "K8S": "k3d"
+  }
 }

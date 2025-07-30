@@ -1,0 +1,40 @@
+---
+- name: Remove k8s-infra Helm installation
+  hosts: localhost
+  gather_facts: false
+  vars:
+    release_name: "signoz-k8s-infra"
+    namespace: "signoz-system"
+    
+  tasks:
+    - name: Remove k8s-infra Helm release
+      kubernetes.core.helm:
+        name: "{{ release_name }}"
+        release_namespace: "{{ namespace }}"
+        state: absent
+        wait: true
+        timeout: 300s
+      ignore_errors: true
+      
+    - name: Remove namespace
+      kubernetes.core.k8s:
+        name: "{{ namespace }}"
+        api_version: v1
+        kind: Namespace
+        state: absent
+        wait: true
+        timeout: 120s
+      ignore_errors: true
+      
+    - name: Clean up temporary files
+      ansible.builtin.file:
+        path: /tmp/k8s-infra-values.yaml
+        state: absent
+      ignore_errors: true
+        
+    - name: Display removal status
+      ansible.builtin.debug:
+        msg: |
+          k8s-infra removal completed!
+          Release: {{ release_name }} removed from namespace: {{ namespace }}
+          Namespace {{ namespace }} has been deleted.

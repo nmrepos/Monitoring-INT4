@@ -1,0 +1,138 @@
+# SigNoz k8s-infra values override
+global:
+  cloud: others
+  clusterName: "{{ cluster_name }}"
+  deploymentEnvironment: "{{ deployment_environment }}"
+
+# Configure OpenTelemetry Collector endpoint to point to local SigNoz
+otelCollectorEndpoint: "{{ signoz_endpoint }}"
+otelInsecure: true
+
+# Enable OTLP exporter
+presets:
+  otlpExporter:
+    enabled: true
+  loggingExporter:
+    enabled: false
+  # Enable metrics collection
+  kubernetesEvents:
+    enabled: true
+  kubernetesExtraMetrics:
+    enabled: true
+  kubeletMetrics:
+    enabled: true
+  kubernetesAttributes:
+    enabled: true
+
+# OpenTelemetry Collector configuration
+opentelemetry-collector:
+  mode: daemonset
+  
+  # Resource configuration
+  resources:
+    limits:
+      cpu: 500m
+      memory: 512Mi
+    requests:
+      cpu: 100m
+      memory: 128Mi
+  
+  # Collector configuration
+  config:
+    receivers:
+      otlp:
+        protocols:
+          grpc:
+            endpoint: 0.0.0.0:4317
+          http:
+            endpoint: 0.0.0.0:4318
+      # Kubernetes metrics
+      k8s_cluster:
+        collection_interval: 10s
+        node_conditions_to_report: [Ready, MemoryPressure, DiskPressure, PIDPressure]
+        allocatable_types_to_report: [cpu, memory, storage]
+      kubeletstats:
+        collection_interval: 20s
+        auth_type: "serviceAccount"
+        endpoint: "${env:K8S_NODE_NAME}:10250"
+        insecure_skip_verify: true
+        
+    processors:
+      batch:
+        send_batch_size: 1024
+        timeout: 1s
+        send_batch_max_size: 2048
+      memory_limiter:
+        limit_mib: 400
+      # Add Kubernetes attributes
+      k8sattributes:
+        auth_type: "serviceAccount"
+        passthrough: false
+        filter:
+          node_from_env_var: KUBE_NODE_NAME
+        extract:
+          metadata:
+            - k8s.pod.name
+            - k8s.pod.uid
+            - k8s.deployment.name
+            - k8s.namespace.name
+            - k8s.node.name
+            - k8s.pod.start_time
+        pod_association:
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.ip
+          - sources:
+              - from: resource_attribute
+                name: k8s.pod.uid
+          - sources:
+              - from: connection
+              
+    exporters:
+      otlp:
+        endpoint: "{{ signoz_endpoint }}"
+        tls:
+          insecure: true
+        headers:
+          "signoz-access-token": ""
+      logging:
+        loglevel: debug
+        
+    service:
+      pipelines:
+        traces:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [otlp]
+        metrics:
+          receivers: [otlp, k8s_cluster, kubeletstats]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [otlp]
+        logs:
+          receivers: [otlp]
+          processors: [memory_limiter, k8sattributes, batch]
+          exporters: [otlp]
+
+  # Service configuration
+  service:
+    type: ClusterIP
+    
+  # Enable RBAC for Kubernetes metrics collection
+  clusterRole:
+    create: true
+    rules:
+      - apiGroups: [""]
+        resources: ["events", "namespaces", "namespaces/status", "nodes", "nodes/spec", "nodes/stats", "nodes/proxy", "pods", "pods/status", "replicationcontrollers", "replicationcontrollers/status", "resourcequotas", "services"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: ["apps"]
+        resources: ["daemonsets", "deployments", "replicasets", "statefulsets"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: ["extensions"]
+        resources: ["daemonsets", "deployments", "replicasets"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: ["batch"]
+        resources: ["jobs", "cronjobs"]
+        verbs: ["get", "list", "watch"]
+      - apiGroups: ["autoscaling"]
+        resources: ["horizontalpodautoscalers"]
+        verbs: ["get", "list", "watch"]
