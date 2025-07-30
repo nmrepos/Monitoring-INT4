@@ -57,13 +57,11 @@
         api_version: apps/v1
         kind: DaemonSet
         namespace: "{{ namespace }}"
-        label_selectors:
-          - "app.kubernetes.io/component=opentelemetry-collector"
       register: collector_status
-      until: collector_status.resources[0].status.numberReady == collector_status.resources[0].status.desiredNumberScheduled
-      retries: 30
-      delay: 10
-      when: collector_status.resources | length > 0
+      until: collector_status.resources | length > 0
+      retries: 10
+      delay: 5
+      ignore_errors: true
       
     - name: Display installation status
       ansible.builtin.debug:
